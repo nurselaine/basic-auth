@@ -14,7 +14,7 @@ const basicAuth = require('../middleware/basicAuth');
 router.post('/signup', async (req, res) => {
   try{
     const { username, password } = req.body;   
-    const encryptedPassword = await bcrypt.hash(req.body.password, 5);
+    const encryptedPassword = await bcrypt.hash(password, 5);
     console.log(`username ${username} password ${encryptedPassword}`);
     const user = await UserModel.create({
       username, 
@@ -57,7 +57,7 @@ router.post('/signin', basicAuth, async (req, res) => {
     3. Either we're valid or we throw an error
   */
   try {
-    const user = await UserModel.findOne({ where: { username: username } });
+    const user = await UserModel.findOne({ where: { username } });
     const valid = await bcrypt.compare(password, user.password);
     if (valid) {
       res.status(200).json(user);

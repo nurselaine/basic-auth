@@ -18,21 +18,23 @@ module.exports = async (req, res, next) => {
     console.log(`authstr: ${authString}`);
 
     let decodedAuthString = base64.decode(authString);
-
+    console.log(`decorded string: ${decodedAuthString}`);
     let [ username, password ] = decodedAuthString.split(':');
     // find user in db
-    let user = await UserModel.findOne({where: {username }})
+    try {
+      const user = await UserModel.findOne({where: { username: username }});
 
-    if(user){
-      let validUser = await bcrypt.compare(password, user.password);
+      if(user){
+        let validUser = await bcrypt.compare(password, user.password);
+  
+        if(validUser){
+          req.user = user; // attaching user to the request object
+          next();
+        }}
 
-      if(validUser){
-        req.user = user; // attaching user to the request object
-        next();
-      } else {
-        next('Not Authorized');
-      }
+    } catch (e) {
+      next('Not Authorized');
     }
-
   }
 }
+

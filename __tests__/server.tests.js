@@ -3,7 +3,12 @@
 const { app } = require('../src/server');
 const { sequelizeDatabase } = require('../src/models/index');
 const supertest = require('supertest');
-const request = supertest(app);
+const basicAuth = require('../src/middleware/basicAuth');
+const mockRequest = supertest(app);
+
+let userData = {
+  testUser: { username: 'user', password: 'password' },
+};
 
 beforeAll( async () => {
   await sequelizeDatabase.sync();
@@ -15,31 +20,56 @@ afterAll( async () => {
 
 describe('Auth Tests', () => {
   test('allows a user to sign up with a POST request', async () => {
-    let response = await request.post('/signup').send({
+    const mock = jest.fn();
+    let response = await mockRequest.post('/signup').send({
       username: 'tester',
       password: 'pass123',
     });
-    // console.log(`password ${JSON.stringify(response)}`);
-    expect(response).toBeTruthy();
+
+    expect(response.body.password).toBeTruthy();
     expect(response.status).toBe(200);
     expect(response.body.username).toEqual('tester');
-    expect(response.body.password).toBeTruthy();
+    expect(response.body.password).not.toEqual('pass123');
+  });
+
+  test('handles a bad user sign up', async () => {
+    const mock = jest.fn();
+    let response = await mockRequest.post('/signup').send({
+      password: ''
+    });
+
+    expect(response.status).toBe(400);
+    // expect(response.body).toEqual('sign up error occured');
   });
 
   test('handles an incorrect user signin with a POST request', async () => {
-    const token = {'Authorization': 'Basic dGVzdDp0ZXN0'};
-    let response = await request.post('/signin').set(token);
-    console.log(response);
-    expect(response.status).toBe(200);
-    expect(response.body.username).toEqual('test');
-    expect(response.body.password).toBeTruthy();
+    const req = {
+      headers: {
+        authorization: 'Basic banana', //'Basic dGVzdDp0ZXN0'
+      },
+    };
+    // const token = {'Authorization': 'Basic dGVzdDp0ZXN0'}; this is wrong
+    let res = {};
+    let next = jest.fn(); // must mock jest function (heck 1hr into lecture)
+    basicAuth(req, res, next)
+      .then(() => {
+        expect(next).toHaveBeenCalledWith('Not Authorized');
+      }); // looking into the .next funciton 
   });
 
-  // test('Tests whether provided username belongs in database', async () => {
-  //   const token = {'Authorization': 'Basic dGVzdDp0ZXN0'};
-  //   let response = await request.post('/signin').set(token);
+  test('handles a user signin with a POST request', async () => {
+    const req = {
+      headers: {
+        authorization: 'Basic banana', //'Basic dGVzdDp0ZXN0'
+      },
+    };
+    // const token = {'Authorization': 'Basic dGVzdDp0ZXN0'}; this is wrong
+    let res = {};
+    let next = jest.fn(); // must mock jest function (heck 1hr into lecture)
+    basicAuth(req, res, next)
+      .then(() => {
+        expect(next).toHaveBeenCalled();
+      }); // looking into the .next funciton 
+  });
 
-  //   expect(response.status).toBe(200);
-  //   expect(next).toHaveBeenCalled();
-  // })
-})
+});
